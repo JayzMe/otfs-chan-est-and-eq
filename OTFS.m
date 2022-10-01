@@ -81,8 +81,8 @@ channelModel = 'EVA';
 fprintf("Channel profile: %s\n", channelModel);
 
 %---- Channel Coding ----
-channelCoding = 'LTE';
-% channelCoding = 'None';
+% channelCoding = 'LTE';
+channelCoding = 'None';
 fprintf("Channel coding: %s\n", channelCoding);
 
 %% %%%%%%%%%%%%%%%%%%%%%%% OBJECT GENERATION %%%%%%%%%%%%%%%%%%%%%%% %%
@@ -219,7 +219,8 @@ hAwgn = AwgnChannel('N0');
 
 %% %%%%%%%%%%%%%%%%%%%%%%% SIMULATION SETTINGS %%%%%%%%%%%%%%%%%%%%%%% %%
 % Create an empty storage to store simulation status
-snrRange = 10:2:30; % in dB
+snrRange = 10:5:30; % in dB
+% simIterations = 1000 * ones(1,length(snrRange));
 simIterations = 1000 * ones(1,length(snrRange));
 
 simstatus = table;  % use table-type variable since it's good to see in the workspace
@@ -238,28 +239,28 @@ time = strrep(strrep(strrep(string(datetime),'/',''),' ',''),':','');
 filename = strcat('Resume-', mfilename, '-', time);
 
 %% Load data when finding files that are created when simulation was interrupted
-resumefiles = ls(sprintf('Resume-%s-*.mat', mfilename));
-if not(isempty(resumefiles))
-    fprintf("Found file(s) to resume a simulation:\n")
-    disp(resumefiles)
-    for file = resumefiles'
-        prompt = strcat('Do you want to resume the simulation using "', file', '"? [Y/n/F]:');
-        answer = input(prompt, 's');
-        if answer == 'Y'
-            disp("Now Loading...")
-            load(file, 'simstatus')  % Load only the simulation status
-            snrRange = simstatus.SNR';
-            filename = file;
-            break;
-        elseif answer == 'F'
-            disp("Now Loading...")
-            load(file)  % Load all parameters
-            snrRange = simstatus.SNR';
-            filename = file;
-            break;
-        end
-    end
-end
+% resumefiles = ls(sprintf('Resume-%s-*.mat', mfilename));
+% if not(isempty(resumefiles))
+%     fprintf("Found file(s) to resume a simulation:\n")
+%     disp(resumefiles)
+%     for file = resumefiles'
+%         prompt = strcat('Do you want to resume the simulation using "', file', '"? [Y/n/F]:');
+%         answer = input(prompt, 's');
+%         if answer == 'Y'
+%             disp("Now Loading...")
+%             load(file, 'simstatus')  % Load only the simulation status
+%             snrRange = simstatus.SNR';
+%             filename = file;
+%             break;
+%         elseif answer == 'F'
+%             disp("Now Loading...")
+%             load(file)  % Load all parameters
+%             snrRange = simstatus.SNR';
+%             filename = file;
+%             break;
+%         end
+%     end
+% end
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%% START SIMULATION %%%%%%%%%%%%%%%%%%%%%%% %%

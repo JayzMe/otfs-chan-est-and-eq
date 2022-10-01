@@ -67,7 +67,8 @@ channelModel = 'EVA';
 fprintf("Channel profile: %s\n", channelModel);
 
 %---- Channel Coding ----
-channelCoding = 'LTE';
+% channelCoding = 'LTE';
+channelCoding = 'None';
 fprintf("Channel coding: %s\n", channelCoding);
 
 %% %%%%%%%%%%%%%%%%%%%%%%% OBJECT GENERATION %%%%%%%%%%%%%%%%%%%%%%% %%
@@ -165,8 +166,9 @@ hAwgn = AwgnChannel('N0');
 
 %% %%%%%%%%%%%%%%%%%%%%%%% SIMULATION SETTINGS %%%%%%%%%%%%%%%%%%%%%%% %%
 % Create an empty storage to store simulation status
-snrRange = 10:2:30; % in dB
-simIterations = 20000;
+% snrRange = 10:2:30; % in dB
+snrRange = 10:5:30; % in dB
+simIterations = 1000;
 
 simstatus = table;  % use table-type variable since it's good to see in the workspace
 simstatus.SNR = snrRange';
@@ -181,23 +183,23 @@ time = strrep(strrep(strrep(string(datetime),'/',''),' ',''),':','');
 filename = strcat('Resume-', mfilename, '-', time);
 
 %% Load data when finding files that are created when simulation was interrupted
-resumefiles = ls(sprintf('Resume-%s-*.mat', mfilename));
-if not(isempty(resumefiles))
-    fprintf("Found file(s) to resume a simulation:\n")
-    disp(resumefiles)
-    for file = resumefiles'
-        prompt = strcat('Do you want to resume the simulation using "', file', '"? [Y/n]:');
-        answer = input(prompt, 's');
-        if answer == 'Y'
-            disp("Now Loading...")
-            load(file, 'simstatus')  % Load only the simulation status
-            snrRange = simstatus.SNR';
-            filename = file;
-            simstatus.Iteration = simstatus.Iteration + 1;
-            break;
-        end
-    end
-end
+% resumefiles = ls(sprintf('Resume-%s-*.mat', mfilename));
+% if not(isempty(resumefiles))
+%     fprintf("Found file(s) to resume a simulation:\n")
+%     disp(resumefiles)
+%     for file = resumefiles'
+%         prompt = strcat('Do you want to resume the simulation using "', file', '"? [Y/n]:');
+%         answer = input(prompt, 's');
+%         if answer == 'Y'
+%             disp("Now Loading...")
+%             load(file, 'simstatus')  % Load only the simulation status
+%             snrRange = simstatus.SNR';
+%             filename = file;
+%             simstatus.Iteration = simstatus.Iteration + 1;
+%             break;
+%         end
+%     end
+% end
 
 
 
@@ -222,10 +224,15 @@ for snrdb = snrRange
         %% Transmitter
         % Bit Generation
         txBits = hBitGenerator.generate();
-        % Channel Encoding
-        txCodedBits = hChannelCoder.encode(txBits);
-        % Scrambler
-        txScrampledBits = hScrambler.scramble(txCodedBits);
+        switch channelCoding
+            case 'None'
+                txScrampledBits = txBits;
+            case 'LTE'
+                % Channel Encoding
+                txCodedBits = hChannelCoder.encode(txBits);
+                % Scrambler
+                txScrampledBits = hScrambler.scramble(txCodedBits);
+        end
         % Symbol Mapping (QAM modulation)
         txSymbols = hSymbolMapper.map(txScrampledBits);
         % OFDM Modulation
@@ -253,12 +260,23 @@ for snrdb = snrRange
 
         % Symbol Demapping
         rxSoftBits = hSymbolMapper.demap(rxEqSymbols, noiseVar);
-        rxUncodedHardBits = hSymbolMapperUncoded.demap(rxEqSymbols);
-        % Descrambling
-        rxDescrambledBits = hScrambler.descramble(rxSoftBits);
-        % Channel Decoding
-        [rxHardBits, blockError] = hChannelCoder.decode(rxDescrambledBits);
-        
+        switch channelCoding
+            case 'None'
+                rxUncodedHardBits = rxSoftBits;
+                rxHardBits = rxUncodedHardBits;
+                if sum(xor(txBits, rxHardBits)) > 0
+                    blockError = 1;
+                else
+                    blockError = 0;
+                end
+            case 'LTE'
+                rxUncodedHardBits = hSymbolMapperUncoded.demap(rxEqSymbols);
+                % Descrambling
+                rxDescrambledBits = hScrambler.descramble(rxSoftBits);
+                % Channel Decoding
+                [rxHardBits, blockError] = hChannelCoder.decode(rxDescrambledBits);
+        end
+
         %% Result
         % Bit Error Rate
         numBitErrors = sum(xor(txBits, rxHardBits));
